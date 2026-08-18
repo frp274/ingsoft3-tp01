@@ -1,4 +1,4 @@
-# Proyecto IngSoft3 - version B
+# Proyecto IngSoft3 - version A
 
 ## instalacion
 
