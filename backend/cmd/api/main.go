@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/frp274/ingsoft3-tp01/backend/internal/handlers"
 	"github.com/frp274/ingsoft3-tp01/backend/internal/repository"
+	"github.com/frp274/ingsoft3-tp01/backend/internal/services"
 )
 
 type HealthResponse struct {
@@ -34,11 +36,14 @@ func main() {
 	}
 	defer db.Close()
 
-	// Inyección de dependencias a repositorios
+	// Inyección de dependencias (Repository -> Service -> Handler)
 	usuarioRepo := repository.NewUsuarioRepository(db)
 	etiquetaRepo := repository.NewEtiquetaRepository(db)
 	planRepo := repository.NewPlanRepository(db)
 	_ = repository.NewInvitacionRepository(db)
+
+	planService := services.NewPlanService(planRepo)
+	planHandler := handlers.NewPlanHandler(planService)
 
 	mux := http.NewServeMux()
 
@@ -52,6 +57,9 @@ func main() {
 		})
 	})
 
+	// Endpoint Planes (US-3)
+	mux.HandleFunc("/api/planes", planHandler.GetPlanesPublicos)
+
 	// Endpoint listar etiquetas
 	mux.HandleFunc("/api/etiquetas", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -61,17 +69,6 @@ func main() {
 			return
 		}
 		json.NewEncoder(w).Encode(etiquetas)
-	})
-
-	// Endpoint listar planes públicos
-	mux.HandleFunc("/api/planes", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		planes, err := planRepo.ListPublicos(r.Context())
-		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err.Error()), http.StatusInternalServerError)
-			return
-		}
-		json.NewEncoder(w).Encode(planes)
 	})
 
 	// Endpoint listar usuarios
