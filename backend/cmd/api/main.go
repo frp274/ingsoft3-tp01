@@ -57,8 +57,8 @@ func main() {
 		})
 	})
 
-	// Endpoint Planes (US-3)
-	mux.HandleFunc("/api/planes", planHandler.GetPlanesPublicos)
+	// Endpoint Planes (GET /api/planes, POST /api/planes)
+	mux.HandleFunc("/api/planes", planHandler.HandlePlanes)
 
 	// Endpoint listar etiquetas
 	mux.HandleFunc("/api/etiquetas", func(w http.ResponseWriter, r *http.Request) {
