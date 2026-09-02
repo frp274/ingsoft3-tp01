@@ -40,10 +40,13 @@ func main() {
 	usuarioRepo := repository.NewUsuarioRepository(db)
 	etiquetaRepo := repository.NewEtiquetaRepository(db)
 	planRepo := repository.NewPlanRepository(db)
-	_ = repository.NewInvitacionRepository(db)
+	invitacionRepo := repository.NewInvitacionRepository(db)
 
 	planService := services.NewPlanService(planRepo)
 	planHandler := handlers.NewPlanHandler(planService)
+
+	invitacionService := services.NewInvitacionService(invitacionRepo, planRepo)
+	invitacionHandler := handlers.NewInvitacionHandler(invitacionService)
 
 	mux := http.NewServeMux()
 
@@ -59,6 +62,10 @@ func main() {
 
 	// Endpoint Planes (GET /api/planes, POST /api/planes)
 	mux.HandleFunc("/api/planes", planHandler.HandlePlanes)
+
+	// Endpoint Invitaciones y Mis Planes (US-5)
+	mux.HandleFunc("/api/invitaciones", invitacionHandler.HandleInvitaciones)
+	mux.HandleFunc("/api/mis-planes", invitacionHandler.HandleMisPlanes)
 
 	// Endpoint listar etiquetas
 	mux.HandleFunc("/api/etiquetas", func(w http.ResponseWriter, r *http.Request) {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Novedades from './views/Novedades';
 import CrearPlan from './views/CrearPlan';
+import MisProximosPlanes from './views/MisProximosPlanes';
 import './App.css';
 
 function App() {
@@ -40,14 +41,11 @@ function App() {
 
       <main className="main-content">
         {vistaActual === 'novedades' && <Novedades />}
+        {vistaActual === 'mis-planes' && (
+          <MisProximosPlanes onExplorar={() => setVistaActual('novedades')} />
+        )}
         {vistaActual === 'crear-plan' && (
           <CrearPlan onPlanCreado={() => setVistaActual('novedades')} />
-        )}
-        {vistaActual === 'mis-planes' && (
-          <div className="placeholder-view">
-            <h2>📅 Mis Próximos Planes</h2>
-            <p>Sección en desarrollo (Próximas historias de usuario).</p>
-          </div>
         )}
       </main>
     </div>
