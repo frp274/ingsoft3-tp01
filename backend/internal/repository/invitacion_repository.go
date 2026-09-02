@@ -11,8 +11,10 @@ import (
 // InvitacionRepository define los métodos de acceso a datos para Invitacion.
 type InvitacionRepository interface {
 	GetByID(ctx context.Context, idInvitacion int) (*models.Invitacion, error)
+	GetByUsuarioYPlan(ctx context.Context, idUsuario int, idPlan int) (*models.Invitacion, error)
 	ListByUsuario(ctx context.Context, idUsuario int) ([]models.Invitacion, error)
 	ListByPlan(ctx context.Context, idPlan int) ([]models.Invitacion, error)
+	ListPlanesConInvitacionByUsuario(ctx context.Context, idUsuario int) ([]models.PlanConInvitacion, error)
 	Create(ctx context.Context, inv *models.Invitacion) error
 	UpdateEstado(ctx context.Context, idInvitacion int, estado string) error
 }
@@ -35,6 +37,19 @@ func (r *mysqlInvitacionRepository) GetByID(ctx context.Context, idInvitacion in
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error al obtener invitación por id: %w", err)
+	}
+	return &inv, nil
+}
+
+func (r *mysqlInvitacionRepository) GetByUsuarioYPlan(ctx context.Context, idUsuario int, idPlan int) (*models.Invitacion, error) {
+	query := `SELECT idInvitacion, idPlan, idUsuario, estado FROM invitaciones WHERE idUsuario = ? AND idPlan = ?`
+	var inv models.Invitacion
+	err := r.db.QueryRowContext(ctx, query, idUsuario, idPlan).Scan(&inv.IDInvitacion, &inv.IDPlan, &inv.IDUsuario, &inv.Estado)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error al buscar invitación por usuario y plan: %w", err)
 	}
 	return &inv, nil
 }
@@ -75,6 +90,56 @@ func (r *mysqlInvitacionRepository) ListByPlan(ctx context.Context, idPlan int) 
 		invitaciones = append(invitaciones, inv)
 	}
 	return invitaciones, nil
+}
+
+// ListPlanesConInvitacionByUsuario realiza el JOIN entre invitaciones y planes (US-5).
+func (r *mysqlInvitacionRepository) ListPlanesConInvitacionByUsuario(ctx context.Context, idUsuario int) ([]models.PlanConInvitacion, error) {
+	query := `SELECT 
+			p.id, 
+			p.nombre, 
+			p.idOrganizador, 
+			p.fechaInicio, 
+			p.fechaFin, 
+			p.visibilidad, 
+			p.descripcion, 
+			p.idEtiqueta, 
+			p.ubicacion, 
+			p.capacidad,
+			i.idInvitacion, 
+			i.estado
+		FROM invitaciones i
+		INNER JOIN planes p ON i.idPlan = p.id
+		WHERE i.idUsuario = ?
+		ORDER BY p.fechaInicio ASC`
+
+	rows, err := r.db.QueryContext(ctx, query, idUsuario)
+	if err != nil {
+		return nil, fmt.Errorf("error al ejecutar JOIN de mis planes: %w", err)
+	}
+	defer rows.Close()
+
+	var misPlanes []models.PlanConInvitacion
+	for rows.Next() {
+		var p models.PlanConInvitacion
+		if err := rows.Scan(
+			&p.ID,
+			&p.Nombre,
+			&p.IDOrganizador,
+			&p.FechaInicio,
+			&p.FechaFin,
+			&p.Visibilidad,
+			&p.Descripcion,
+			&p.IDEtiqueta,
+			&p.Ubicacion,
+			&p.Capacidad,
+			&p.IDInvitacion,
+			&p.Estado,
+		); err != nil {
+			return nil, fmt.Errorf("error al escanear fila de mis planes: %w", err)
+		}
+		misPlanes = append(misPlanes, p)
+	}
+	return misPlanes, nil
 }
 
 func (r *mysqlInvitacionRepository) Create(ctx context.Context, inv *models.Invitacion) error {
