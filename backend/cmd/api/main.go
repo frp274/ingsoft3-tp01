@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"encoding/json"
@@ -6,11 +6,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/frp274/ingsoft3-tp01/backend/internal/repository"
 )
 
 type HealthResponse struct {
-	Status  string `json:"status"`
-	Message string `json:"message"`
+	Status   string `json:"status"`
+	Message  string `json:"message"`
+	Database string `json:"database"`
 }
 
 func main() {
@@ -20,30 +23,78 @@ func main() {
 	}
 
 	dbDsn := os.Getenv("DB_DSN")
-	if dbDsn != "" {
-		log.Printf("Configured DB DSN: %s", dbDsn)
+	if dbDsn == "" {
+		dbDsn = "root:secret_password_here@tcp(localhost:3306)/planes_db"
 	}
+
+	log.Printf("Iniciando conexión con base de datos: %s", dbDsn)
+	db, err := repository.InitDB(dbDsn)
+	if err != nil {
+		log.Fatalf("Error crítico al inicializar la base de datos: %v", err)
+	}
+	defer db.Close()
+
+	// Inyección de dependencias a repositorios
+	usuarioRepo := repository.NewUsuarioRepository(db)
+	etiquetaRepo := repository.NewEtiquetaRepository(db)
+	planRepo := repository.NewPlanRepository(db)
+	_ = repository.NewInvitacionRepository(db)
 
 	mux := http.NewServeMux()
 
+	// Endpoint Healthcheck
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(HealthResponse{
-			Status:  "ok",
-			Message: "Backend API is healthy and running",
+			Status:   "ok",
+			Message:  "Backend API is healthy and running",
+			Database: "connected",
 		})
+	})
+
+	// Endpoint listar etiquetas
+	mux.HandleFunc("/api/etiquetas", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		etiquetas, err := etiquetaRepo.List(r.Context())
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(etiquetas)
+	})
+
+	// Endpoint listar planes públicos
+	mux.HandleFunc("/api/planes", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		planes, err := planRepo.ListPublicos(r.Context())
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(planes)
+	})
+
+	// Endpoint listar usuarios
+	mux.HandleFunc("/api/usuarios", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		usuarios, err := usuarioRepo.List(r.Context())
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(usuarios)
 	})
 
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
-			"message": "Welcome to Planes API",
+			"message": "Bienvenido a la API de Planes",
 		})
 	})
 
 	addr := fmt.Sprintf(":%s", port)
-	log.Printf("Server listening on %s", addr)
+	log.Printf("Servidor escuchando en http://localhost%s", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+		log.Fatalf("Error al iniciar el servidor: %v", err)
 	}
 }
