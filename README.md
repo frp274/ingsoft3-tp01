@@ -1,5 +1,7 @@
 # 🎟️ PlanesApp - Plataforma de Organización y Descubrimiento de Planes
 
+[![CI](https://github.com/frp274/ingsoft3-tp01/actions/workflows/ci.yml/badge.svg)](https://github.com/frp274/ingsoft3-tp01/actions/workflows/ci.yml)
+
 MVP de una plataforma colaborativa para descubrir eventos, crear planes públicos y gestionar solicitudes de invitación entre usuarios de una comunidad.
 
 ---

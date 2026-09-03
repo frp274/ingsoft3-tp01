@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"os"
 
-	"paquete/inexistente/para/demo_gate"
-
 	"github.com/frp274/ingsoft3-tp01/backend/internal/handlers"
 	"github.com/frp274/ingsoft3-tp01/backend/internal/repository"
 	"github.com/frp274/ingsoft3-tp01/backend/internal/services"
@@ -21,7 +19,6 @@ type HealthResponse struct {
 }
 
 func main() {
-	ERROR_CRITICO_SINTAXIS_PRUEBA_GATE_CI_TP4()
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
