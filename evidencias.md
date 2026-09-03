@@ -16,6 +16,7 @@ Seleccionamos con que cambios nos vamos a quedar
 <img width="1415" height="649" alt="Screenshot 2026-08-18 194711" src="https://github.com/user-attachments/assets/835b730c-0c1f-43ae-8a02-5163cb9021c5" />
 Fijamos una version estable del codigo con el tag y le damos una explicacion de los cambios y agregados con el release
 
+
 ## Evidencias — TP2
 ### 1. Captura de la terminal de mi repo levantando la app con "docker compose up --build", se levanta la imagen del back, front y todo.
 <img width="1916" height="1017" alt="image" src="https://github.com/user-attachments/assets/06f09499-0c37-4260-88ff-a8dad1864625" />
@@ -38,6 +39,14 @@ Se puede notar las diferencias de peso entre las imagenes base SDK pesadas y mis
 <img width="1162" height="388" alt="image" src="https://github.com/user-attachments/assets/9a4248a6-b2f3-49d8-aed9-5b219231eb9f" />
 
 
+## Evidencias - TP4
+### 1. Romper el build
+Al abrir el PR, el workflow CI se disparará automáticamente.
+El job build-backend fallará en el paso de compilación (RUN go build -o main ./cmd/api/main.go).
+El status check del PR quedará en rojo (❌ Failed), bloqueando el botón de Merge si tienes configuradas las Branch Protection Rules / Required status checks.
+<img width="1112" height="387" alt="Screenshot 2026-09-02 221454" src="https://github.com/user-attachments/assets/1b1dea8c-aaca-4564-98ad-e0ce5338b5ea" />
+Pero al revertir el error, github automaticamente, no detecta error y permite el merge
+<img width="1115" height="407" alt="image" src="https://github.com/user-attachments/assets/07fbe4d7-e191-48ac-886b-8ea04af640e5" />
 
 
 
