@@ -4,7 +4,7 @@ MVP de una plataforma colaborativa para descubrir eventos, crear planes público
 
 ---
 
-## 🏗️ Arquitectura y Tecnologías
+## 🏗️ Arquitectura y Tecnologias
 
 - **Backend:** Go 1.22 con Clean Architecture (Handlers, Services, Repositories) e inyección de dependencias (`*sql.DB`).
 - **Base de Datos:** MySQL 8 con persistencia en volumen nombrado (`db_data`), migraciones DDL automáticas y script Seed inicial.
@@ -77,4 +77,4 @@ Una vez levantados los servicios, accede a través de tu navegador:
 Al iniciar el backend por primera vez, el sistema inicializa automáticamente:
 - **1 Usuario de prueba:** `juan.perez@example.com`
 - **3 Etiquetas base:** "Outdoor", "Fiesta", "Cine"
-- **5 Planes públicos de ejemplo** con fechas y ubicaciones listas para interactuar.
+- **5 Planes públicos de ejemplo** con fechas, ubicaciones y todos los atributos, listas para interactuar.
