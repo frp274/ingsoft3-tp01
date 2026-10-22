@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/frp274/ingsoft3-tp01/backend/internal/models"
@@ -20,7 +21,7 @@ type invitacionService struct {
 	planRepo       repository.PlanRepository
 }
 
-// NewInvitacionService crea una nueva instancia del servicio de invitaciones.
+// NewInvitacionService crea una nueva instancia del servicio de invitaciones con inyección de dependencias.
 func NewInvitacionService(invitacionRepo repository.InvitacionRepository, planRepo repository.PlanRepository) InvitacionService {
 	return &invitacionService{
 		invitacionRepo: invitacionRepo,
@@ -30,6 +31,13 @@ func NewInvitacionService(invitacionRepo repository.InvitacionRepository, planRe
 
 // SolicitarInvitacion registra una solicitud con estado 'pendiente'.
 func (s *invitacionService) SolicitarInvitacion(ctx context.Context, idUsuario int, idPlan int) (*models.Invitacion, error) {
+	if idUsuario <= 0 {
+		return nil, errors.New("el id de usuario debe ser mayor a 0")
+	}
+	if idPlan <= 0 {
+		return nil, errors.New("el id de plan debe ser mayor a 0")
+	}
+
 	// Verificar que el plan exista
 	plan, err := s.planRepo.GetByID(ctx, idPlan)
 	if err != nil {
@@ -45,7 +53,7 @@ func (s *invitacionService) SolicitarInvitacion(ctx context.Context, idUsuario i
 		return nil, fmt.Errorf("error al verificar invitaciones previas: %w", err)
 	}
 	if existente != nil {
-		return existente, nil // Ya está solicitada o inscripta
+		return existente, nil // Ya está solicitada o inscripta (idempotente)
 	}
 
 	nuevaInv := &models.Invitacion{
@@ -63,10 +71,16 @@ func (s *invitacionService) SolicitarInvitacion(ctx context.Context, idUsuario i
 
 // GetMisPlanes obtiene los planes a los que el usuario se postuló mediante JOIN.
 func (s *invitacionService) GetMisPlanes(ctx context.Context, idUsuario int) ([]models.PlanConInvitacion, error) {
+	if idUsuario <= 0 {
+		return nil, errors.New("el id de usuario debe ser mayor a 0")
+	}
 	return s.invitacionRepo.ListPlanesConInvitacionByUsuario(ctx, idUsuario)
 }
 
 // GetMisInvitaciones obtiene la lista de invitaciones del usuario.
 func (s *invitacionService) GetMisInvitaciones(ctx context.Context, idUsuario int) ([]models.Invitacion, error) {
+	if idUsuario <= 0 {
+		return nil, errors.New("el id de usuario debe ser mayor a 0")
+	}
 	return s.invitacionRepo.ListByUsuario(ctx, idUsuario)
 }
