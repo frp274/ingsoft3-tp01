@@ -11,6 +11,11 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# ETAPA TEST: EJECUCIÓN DE PRUEBAS UNITARIAS Y COBERTURA (TP5)
+FROM build AS test
+WORKDIR /app
+ENTRYPOINT ["npm", "run", "test:ci"]
+
 # ETAPA 2: SERVIDOR (Nginx)
 FROM nginx:alpine
 

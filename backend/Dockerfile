@@ -13,6 +13,13 @@ COPY . .
 # Compilamos un binario estático llamado 'main'
 RUN go build -o main ./cmd/api/main.go
 
+# ETAPA TEST: EJECUCIÓN DE PRUEBAS Y VERIFICACIÓN DE UMBRAL DE COBERTURA (TP5)
+FROM build AS test
+WORKDIR /app
+RUN mkdir -p /out
+RUN chmod +x ./check_coverage.sh
+ENTRYPOINT ["./check_coverage.sh"]
+
 # ETAPA 2: RUNTIME (Imagen mínima)
 FROM alpine:latest AS final
 WORKDIR /app

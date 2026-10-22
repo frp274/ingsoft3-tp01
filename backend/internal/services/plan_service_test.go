@@ -202,6 +202,24 @@ func TestPlanService_CrearPlan_PlanNulo_CasoBorde(t *testing.T) {
 	mockRepo.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
 }
 
+// TestPlanService_GetPlanByID_Exitoso verifica la búsqueda de un plan por ID existente.
+func TestPlanService_GetPlanByID_Exitoso(t *testing.T) {
+	// Arrange
+	mockRepo := new(MockPlanRepository)
+	service := services.NewPlanService(mockRepo)
+
+	planEsperado := &models.Plan{ID: 1, Nombre: "Trekking Champaquí"}
+	mockRepo.On("GetByID", mock.Anything, 1).Return(planEsperado, nil)
+
+	// Act
+	plan, err := service.GetPlanByID(context.Background(), 1)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.Equal(t, planEsperado, plan)
+	mockRepo.AssertExpectations(t)
+}
+
 // TestPlanService_GetPlanByID_IDInvalido_CasoBorde prueba el caso borde con IDs no positivos.
 func TestPlanService_GetPlanByID_IDInvalido_CasoBorde(t *testing.T) {
 	idsInvalidos := []int{0, -1, -99}

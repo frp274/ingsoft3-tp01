@@ -245,3 +245,40 @@ func TestInvitacionService_GetMisPlanes_UsuarioInvalido_CasoBorde(t *testing.T) 
 	assert.Contains(t, err.Error(), "el id de usuario debe ser mayor a 0")
 	mockInvRepo.AssertNotCalled(t, "ListPlanesConInvitacionByUsuario", mock.Anything, mock.Anything)
 }
+
+// TestInvitacionService_GetMisInvitaciones_Exitoso prueba la obtención de invitaciones del usuario.
+func TestInvitacionService_GetMisInvitaciones_Exitoso(t *testing.T) {
+	// Arrange
+	mockPlanRepo := new(MockPlanRepository)
+	mockInvRepo := new(MockInvitacionRepository)
+	service := services.NewInvitacionService(mockInvRepo, mockPlanRepo)
+
+	invsEsperadas := []models.Invitacion{
+		{IDInvitacion: 1, IDPlan: 5, IDUsuario: 1, Estado: "pendiente"},
+	}
+	mockInvRepo.On("ListByUsuario", mock.Anything, 1).Return(invsEsperadas, nil)
+
+	// Act
+	invs, err := service.GetMisInvitaciones(context.Background(), 1)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.Equal(t, invsEsperadas, invs)
+	mockInvRepo.AssertExpectations(t)
+}
+
+// TestInvitacionService_GetMisInvitaciones_UsuarioInvalido prueba la validación con ID no positivo.
+func TestInvitacionService_GetMisInvitaciones_UsuarioInvalido(t *testing.T) {
+	// Arrange
+	mockPlanRepo := new(MockPlanRepository)
+	mockInvRepo := new(MockInvitacionRepository)
+	service := services.NewInvitacionService(mockInvRepo, mockPlanRepo)
+
+	// Act
+	invs, err := service.GetMisInvitaciones(context.Background(), 0)
+
+	// Assert
+	assert.Error(t, err)
+	assert.Nil(t, invs)
+	assert.Contains(t, err.Error(), "el id de usuario debe ser mayor a 0")
+}

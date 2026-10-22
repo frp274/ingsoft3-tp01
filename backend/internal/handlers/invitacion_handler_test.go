@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -71,6 +72,26 @@ func TestInvitacionHandler_SolicitarInvitacion_Exitoso(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
+// TestInvitacionHandler_SolicitarInvitacion_ErrorServicio verifica HTTP 500 cuando el servicio falla.
+func TestInvitacionHandler_SolicitarInvitacion_ErrorServicio(t *testing.T) {
+	// Arrange
+	mockService := new(MockInvitacionService)
+	handler := handlers.NewInvitacionHandler(mockService)
+
+	mockService.On("SolicitarInvitacion", mock.Anything, 1, 5).Return(nil, errors.New("fallo en BD"))
+
+	payload := `{"idPlan": 5}`
+	req := httptest.NewRequest(http.MethodPost, "/api/invitaciones", bytes.NewBufferString(payload))
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler.HandleInvitaciones(rec, req)
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Error al procesar solicitud")
+}
+
 // TestInvitacionHandler_SolicitarInvitacion_CasosError_TableDriven valida errores 400 Bad Request en la solicitud.
 func TestInvitacionHandler_SolicitarInvitacion_CasosError_TableDriven(t *testing.T) {
 	casos := []struct {
@@ -115,6 +136,23 @@ func TestInvitacionHandler_SolicitarInvitacion_CasosError_TableDriven(t *testing
 	}
 }
 
+// TestInvitacionHandler_HandleInvitaciones_MetodoNoPermitido verifica rechazo a métodos no soportados.
+func TestInvitacionHandler_HandleInvitaciones_MetodoNoPermitido(t *testing.T) {
+	// Arrange
+	mockService := new(MockInvitacionService)
+	handler := handlers.NewInvitacionHandler(mockService)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/invitaciones", nil)
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler.HandleInvitaciones(rec, req)
+
+	// Assert
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Método no permitido")
+}
+
 // TestInvitacionHandler_HandleMisPlanes_Exitoso verifica el listado de planes del usuario activo con HTTP 200 OK.
 func TestInvitacionHandler_HandleMisPlanes_Exitoso(t *testing.T) {
 	// Arrange
@@ -139,6 +177,25 @@ func TestInvitacionHandler_HandleMisPlanes_Exitoso(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "Trekking Champaquí")
 	assert.Contains(t, rec.Body.String(), "Fiesta Primavera")
 	mockService.AssertExpectations(t)
+}
+
+// TestInvitacionHandler_HandleMisPlanes_ErrorServicio valida HTTP 500 cuando el servicio falla.
+func TestInvitacionHandler_HandleMisPlanes_ErrorServicio(t *testing.T) {
+	// Arrange
+	mockService := new(MockInvitacionService)
+	handler := handlers.NewInvitacionHandler(mockService)
+
+	mockService.On("GetMisPlanes", mock.Anything, 1).Return(nil, errors.New("error en repositorio"))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/mis-planes", nil)
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler.HandleMisPlanes(rec, req)
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Error al consultar mis planes")
 }
 
 // TestInvitacionHandler_HandleMisPlanes_MetodoNoPermitido prueba que sólo se acepte GET en /api/mis-planes.
@@ -180,4 +237,23 @@ func TestInvitacionHandler_GetMisInvitaciones_Exitoso(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `"idInvitacion":1`)
 	mockService.AssertExpectations(t)
+}
+
+// TestInvitacionHandler_GetMisInvitaciones_ErrorServicio valida HTTP 500 al fallar el servicio.
+func TestInvitacionHandler_GetMisInvitaciones_ErrorServicio(t *testing.T) {
+	// Arrange
+	mockService := new(MockInvitacionService)
+	handler := handlers.NewInvitacionHandler(mockService)
+
+	mockService.On("GetMisInvitaciones", mock.Anything, 1).Return(nil, errors.New("fallo de base de datos"))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/invitaciones", nil)
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler.HandleInvitaciones(rec, req)
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Error al obtener invitaciones")
 }

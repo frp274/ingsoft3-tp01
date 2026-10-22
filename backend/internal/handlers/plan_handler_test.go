@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -57,7 +58,8 @@ func TestPlanHandler_CrearPlan_Exitoso(t *testing.T) {
 		"visibilidad": "publico",
 		"idEtiqueta": 1,
 		"ubicacion": "Parque Sarmiento",
-		"capacidad": 10
+		"capacidad": 10,
+		"descripcion": "Llevar agua y casco"
 	}`
 
 	req := httptest.NewRequest(http.MethodPost, "/api/planes", bytes.NewBufferString(payload))
@@ -71,6 +73,34 @@ func TestPlanHandler_CrearPlan_Exitoso(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	assert.Contains(t, rec.Body.String(), "Paseo en Bici")
 	mockService.AssertExpectations(t)
+}
+
+// TestPlanHandler_CrearPlan_ErrorServicio valida 500 cuando el servicio falla.
+func TestPlanHandler_CrearPlan_ErrorServicio(t *testing.T) {
+	// Arrange
+	mockService := new(MockPlanService)
+	handler := handlers.NewPlanHandler(mockService)
+
+	mockService.On("CrearPlan", mock.Anything, mock.Anything).Return(errors.New("fallo en base de datos"))
+
+	payload := `{
+		"nombre": "Paseo en Bici",
+		"fechaInicio": "2026-11-10T10:00:00Z",
+		"fechaFin": "2026-11-10T13:00:00Z",
+		"idEtiqueta": 1,
+		"ubicacion": "Parque",
+		"capacidad": 10
+	}`
+
+	req := httptest.NewRequest(http.MethodPost, "/api/planes", bytes.NewBufferString(payload))
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler.HandlePlanes(rec, req)
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Error al guardar el plan")
 }
 
 // TestPlanHandler_CrearPlan_ValidacionesPayload_TableDriven valida errores 400 Bad Request ante payloads inválidos.
@@ -131,6 +161,67 @@ func TestPlanHandler_CrearPlan_ValidacionesPayload_TableDriven(t *testing.T) {
 				"capacidad": 10
 			}`,
 			errorEsperado: "El campo 'idEtiqueta' es obligatorio",
+		},
+		{
+			nombrePrueba: "visibilidad invalida",
+			payload: `{
+				"nombre": "Caminata",
+				"fechaInicio": "2026-11-10T10:00:00Z",
+				"fechaFin": "2026-11-10T13:00:00Z",
+				"visibilidad": "invalida",
+				"idEtiqueta": 1,
+				"ubicacion": "Parque",
+				"capacidad": 10
+			}`,
+			errorEsperado: "El campo 'visibilidad' debe ser 'publico' o 'privado'",
+		},
+		{
+			nombrePrueba: "fechaInicio vacia",
+			payload: `{
+				"nombre": "Caminata",
+				"fechaInicio": "",
+				"fechaFin": "2026-11-10T13:00:00Z",
+				"idEtiqueta": 1,
+				"ubicacion": "Parque",
+				"capacidad": 10
+			}`,
+			errorEsperado: "El campo 'fechaInicio' es obligatorio",
+		},
+		{
+			nombrePrueba: "fechaFin vacia",
+			payload: `{
+				"nombre": "Caminata",
+				"fechaInicio": "2026-11-10T10:00:00Z",
+				"fechaFin": "",
+				"idEtiqueta": 1,
+				"ubicacion": "Parque",
+				"capacidad": 10
+			}`,
+			errorEsperado: "El campo 'fechaFin' es obligatorio",
+		},
+		{
+			nombrePrueba: "fechaInicio formato invalido",
+			payload: `{
+				"nombre": "Caminata",
+				"fechaInicio": "fecha-rara",
+				"fechaFin": "2026-11-10T13:00:00Z",
+				"idEtiqueta": 1,
+				"ubicacion": "Parque",
+				"capacidad": 10
+			}`,
+			errorEsperado: "Formato inválido para 'fechaInicio'",
+		},
+		{
+			nombrePrueba: "fechaFin formato invalido",
+			payload: `{
+				"nombre": "Caminata",
+				"fechaInicio": "2026-11-10T10:00:00Z",
+				"fechaFin": "fecha-rara",
+				"idEtiqueta": 1,
+				"ubicacion": "Parque",
+				"capacidad": 10
+			}`,
+			errorEsperado: "Formato inválido para 'fechaFin'",
 		},
 		{
 			nombrePrueba: "fecha fin anterior a fecha inicio",
@@ -197,6 +288,25 @@ func TestPlanHandler_GetPlanesPublicos_Exitoso(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "Trekking")
 	assert.Contains(t, rec.Body.String(), "Kayak")
 	mockService.AssertExpectations(t)
+}
+
+// TestPlanHandler_GetPlanesPublicos_ErrorServicio valida HTTP 500 cuando el servicio falla.
+func TestPlanHandler_GetPlanesPublicos_ErrorServicio(t *testing.T) {
+	// Arrange
+	mockService := new(MockPlanService)
+	handler := handlers.NewPlanHandler(mockService)
+
+	mockService.On("GetPlanesPublicos", mock.Anything).Return(nil, errors.New("fallo en servicio"))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/planes", nil)
+	rec := httptest.NewRecorder()
+
+	// Act
+	handler.HandlePlanes(rec, req)
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Error al consultar planes")
 }
 
 // TestPlanHandler_MetodoNoPermitido_CasoBorde prueba el caso de un método HTTP no soportado.

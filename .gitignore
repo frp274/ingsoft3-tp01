@@ -4,6 +4,10 @@ bin/
 obj/
 dist/
 build/
+coverage/
+coverage.out
+coverage.raw.out
+coverage.html
 
 # secretos: NUNCA se versionan
 .env

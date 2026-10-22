@@ -13,4 +13,18 @@ export default defineConfig({
       },
     },
   },
+  test: {
+    globals: true,
+    environment: 'node',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'json-summary'],
+      include: ['src/utils/**', 'src/services/**', 'src/lib/**'],
+      reportsDirectory: './coverage',
+      thresholds: {
+        lines: 80,
+        branches: 80,
+      },
+    },
+  },
 })
