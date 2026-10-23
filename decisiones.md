@@ -89,3 +89,74 @@ Se delega la construcción directamente a la directiva `docker/build-push-action
 ## 5. Declaración de uso de IA
 
 Se utilizó IA conversacional para diseñar la sintaxis YAML del pipeline y asegurar el uso correcto de las Actions oficiales actualizadas (ej. `actions/checkout@v6`, `docker/setup-buildx-action@v4`). La verificación se llevó a cabo empíricamente mediante la técnica de "broken build": introduciendo un error de sintaxis intencional en una rama, abriendo un Pull Request, y validando visualmente que el Gate bloqueara el merge de forma efectiva.
+
+---
+
+# Decisiones - TP5
+
+## 1. Enlaces de verificación y evidencias de este TP
+- **Corrida roja en GitHub Actions (freno por umbral de cobertura):**  
+  [Fallo en CI por cobertura insuficiente (<80%)](https://github.com/frp274/ingsoft3-tp01/actions/runs/39980746055/job/120507063296?pr=27)
+- **PR #27 (Secuencia completa: rojo -> corrección con tests -> verde -> merge):**  
+  [Pull Request #27 - Implementación de Quality Gate y resolución](https://github.com/frp274/ingsoft3-tp01/pull/27)
+- **PR #28 (Gate bloqueado permanentemente - Evidencia activa para la defensa):**  
+  [Pull Request #28 - Freno de calidad activo (en rojo)](https://github.com/frp274/ingsoft3-tp01/pull/28)
+
+---
+
+## 2. Qué lógica se testeó y por qué (análisis de impacto)
+Se priorizó testear la lógica nuclear del negocio del Organizador de Eventos:
+1. **En el backend (Go):** Las reglas de validación de planes, cálculo y control de capacidad máxima de asistentes, verificación de estados de invitaciones y transiciones de estados del plan.
+2. **En el frontend (React):** Los módulos utilitarios puros (`src/lib/`), encargados de procesar fechas, filtrar listas de eventos según visibilidad/estado y clasificar prioridades de planes.
+
+**Por qué esa lógica:** Un bug en estos componentes compromete directamente la integridad del sistema (por ejemplo, permitir sobreventa de cupos para un evento, procesar invitaciones a planes cancelados o admitir usuarios no registrados). Los fallos en la lógica de negocio no se manifiestan como caídas del servidor; son errores silenciosos que corrompen los datos.
+
+---
+
+## 3. Adaptación del Stack tecnológico frente a la guía (.NET -> Go + React/Vitest)
+Dado que el stack del proyecto utiliza Go y React en lugar del sample canónico (.NET + Vitest), se mapearon todas las técnicas y herramientas requeridas para cumplir con la matriz de la cátedra:
+
+| Concepto a lograr | Herramienta implementada | Justificación técnica |
+|---|---|---|
+| **Ubicación de tests (Back)** | Archivos `*_test.go` | Convención estándar nativa de Go junto a sus paquetes de lógica. |
+| **Ubicación de tests (Front)** | Archivos `*.test.js` en `src/lib/` | Pruebas de lógica pura al lado de los módulos testeados sin tocar el DOM. |
+| **Test parametrizado (Back)** | *Table-Driven Tests* (`t.Run`) | Estructuras de datos iteradas con slices para evaluar múltiples inputs/outputs en un solo método. |
+| **Test parametrizado (Front)** | `it.each` de Vitest | Mismo comportamiento de evaluación tabular en entorno JavaScript. |
+| **Inyección de dependencias** | Interfaces en Go / Funciones por parámetro en JS | Permite sustituir repositorios y clientes HTTP por dobles de prueba desde el exterior. |
+| **Fabricación de Mocks (Back)** | `stretchr/testify/mock` | Mocks basados en interfaces que permiten aserciones sobre llamadas (`AssertExpectations`). |
+| **Fabricación de Mocks (Front)** | `vi.fn()` en Vitest | Mocking de llamadas asíncronas y verificación de argumentos con `toHaveBeenCalledWith`. |
+| **Medición de cobertura** | `go test -coverprofile` y `@vitest/coverage-v8` | Extracción de porcentajes de líneas y ramas tanto en local como en los runners del CI. |
+| **Umbral que rompe el build** | Script bash con `exit 1` (Back) y `thresholds` (Front) | Interrupción de la ejecución y salida con código de error si el porcentaje es menor a 80%. |
+| **Filtro de exclusión** | Banderas de paquetes en Go y `include: ['src/lib/**']` en Vite | Aísla el código de arranque y modelos de datos para medir exclusivamente la lógica de negocio. |
+
+---
+
+## 4. Umbral de cobertura elegido y justificación
+Se definió un umbral estricto del **80% de cobertura** tanto para líneas (*lines*) como para ramas de decisión (*branches*).
+- **Justificación:** Un 80% asegura que ninguna función central quede desprotegida ante refactorizaciones o regresiones, obligando a contemplar caminos alternativos y casos de borde. Se evitó exigir un 95% o 100% para no caer en la *Ley de Goodhart*, donde el equipo termina escribiendo aserciones vacías o testeando código trivial solo para satisfacer una métrica numérica.
+- **Ramas medidas:** En el frontend, Vitest evalúa tanto *lines* como *branches*. En Go, si bien `go test -cover` mide sentencias (*statements*), la suite fue diseñada recorriendo explícitamente todas las ramas de control (`if/else` y `switch`).
+
+---
+
+## 5. Qué se dejó afuera de la cuenta de cobertura y por qué
+Tanto en el backend como en el frontend se aplicó el principio de **"medir lo que tiene lógica y excluir la fontanería"**:
+- **Backend (Go):** Se excluyeron `main.go` y la carpeta de arranque (`cmd/api/`), los modelos/structs de datos puros que solo definen esquemas sin comportamiento, y las inicializaciones de conexiones a MySQL. Si el cableado de la app falla, el servicio no levanta y el problema se detecta de inmediato sin necesidad de tests unitarios.
+- **Frontend (React):** Se excluyeron los componentes visuales de React (`.jsx` / `.tsx`), los archivos de configuración (`vite.config.js`) y el punto de entrada `index.html`. La cátedra desaconseja montar entornos DOM pesados en esta etapa; la UI se valida de punta a punta con pruebas end-to-end en el TP7. La cobertura del frontend mide exclusivamente la lógica pura contenida en `src/lib/**`.
+
+---
+
+## 6. Por qué cobertura alta no garantiza calidad (con ejemplo concreto)
+El code coverage mide qué líneas fueron **ejecutadas**, pero es ciego respecto a si fueron **verificadas**. 
+
+**Ejemplo:**
+```javascript
+// Función bajo prueba:
+export function calcularCapacidadRestante(total, confirmados) {
+    if (confirmados > total) return 0;
+    return total - confirmados;
+}
+
+// Test engañoso que otorga 100% de cobertura:
+it('ejecuta la función de capacidad', () => {
+    calcularCapacidadRestante(100, 20); // Se ejecutan todas las líneas... ¡pero no hay ningún expect()!
+});
