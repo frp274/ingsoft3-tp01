@@ -17,23 +17,50 @@ jobs:
         run: echo "Rama $RAMA · commit $GITHUB_SHA"
 
       - name: Bajar el código al runner
-        uses: actions/checkout@v6 # Clona tu repositorio en la máquina virtual. Sin esto, no hay archivos para construir
+        uses: actions/checkout@v6 # Clona tu repositorio en la máquina virtual
 
       - name: Preparar el constructor que sabe cachear
         uses: docker/setup-buildx-action@v4 # Cambia el constructor por defecto de Docker por uno que sabe enviar capas al almacén de GitHub
 
-      - name: Construir la imagen del backend
+      - name: Construir imagen de test del backend
         uses: docker/build-push-action@v7
         with:
-          context: ./backend # Apunta a la carpeta donde vive el Dockerfile del backend
-          push: false # Evita publicar la imagen en un registry; el TP4 solo pide verificar que construya
-          tags: backend:ci # Nombre temporal de la imagen mientras vive en el runner
-          cache-from: type=gha,scope=backend # Trae las capas previamente cacheadas desde GitHub Actions
-          # Guarda todas las capas generadas (mode=max). 
-          # El 'scope=backend' es vital para que no pise el estante del frontend en el almacén
-          cache-to: type=gha,mode=max,scope=backend 
+          context: ./backend
+          target: test
+          load: true
+          tags: backend:test
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
 
-  build-frontend: # Al estar al mismo nivel que build-backend, corre en paralelo en otra máquina
+      - name: Ejecutar pruebas y verificar umbral de cobertura (80%)
+        run: |
+          mkdir -p backend-coverage
+          docker run --rm -v ${{ github.workspace }}/backend-coverage:/out backend:test
+
+      - name: Publicar resumen de cobertura del backend
+        if: always()
+        run: |
+          if [ -f backend-coverage/coverage-summary.md ]; then
+            cat backend-coverage/coverage-summary.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Subir artefactos de cobertura del backend
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-coverage-report
+          path: backend-coverage/
+
+      - name: Construir la imagen del backend para producción
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          push: false
+          tags: backend:ci
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+  build-frontend: # Corre en paralelo para verificar el frontend
     runs-on: ubuntu-latest
     steps:
       - name: Qué estamos verificando
@@ -47,11 +74,48 @@ jobs:
       - name: Preparar el constructor que sabe cachear
         uses: docker/setup-buildx-action@v4
 
-      - name: Construir la imagen del frontend
+      - name: Construir imagen de test del frontend
+        uses: docker/build-push-action@v7
+        with:
+          context: ./frontend
+          target: test
+          load: true
+          tags: frontend:test
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Ejecutar pruebas unitarias y verificar umbral de cobertura (80%)
+        run: |
+          mkdir -p frontend-coverage
+          docker run --rm -v ${{ github.workspace }}/frontend-coverage:/app/coverage frontend:test
+
+      - name: Publicar resumen de cobertura del frontend
+        if: always()
+        run: |
+          if [ -f frontend-coverage/coverage-summary.json ]; then
+            LINES=$(node -e 'console.log(require("./frontend-coverage/coverage-summary.json").total.lines.pct)')
+            BRANCHES=$(node -e 'console.log(require("./frontend-coverage/coverage-summary.json").total.branches.pct)')
+            cat <<EOF >> $GITHUB_STEP_SUMMARY
+          ### 🧪 Resumen de Cobertura de Tests - Frontend (Vitest)
+          | Métrica | Cobertura Obtenida | Umbral Requerido | Estado |
+          | :--- | :--- | :--- | :--- |
+          | **Líneas** | \`${LINES}%\` | \`80.0%\` | $(node -e "console.log($LINES >= 80 ? '✅ Aprobado' : '❌ Reprobado')") |
+          | **Ramas (Branches)** | \`${BRANCHES}%\` | \`80.0%\` | $(node -e "console.log($BRANCHES >= 80 ? '✅ Aprobado' : '❌ Reprobado')") |
+          EOF
+          fi
+
+      - name: Subir artefactos de cobertura del frontend
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: frontend-coverage-report
+          path: frontend-coverage/
+
+      - name: Construir la imagen del frontend para producción
         uses: docker/build-push-action@v7
         with:
           context: ./frontend
           push: false
           tags: frontend:ci
-          cache-from: type=gha,scope=frontend # Usa su propio scope exclusivo para no mezclar capas con el backend
+          cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
