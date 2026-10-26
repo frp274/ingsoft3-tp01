@@ -160,7 +160,7 @@ export function calcularCapacidadRestante(total, confirmados) {
 it('ejecuta la función de capacidad', () => {
     calcularCapacidadRestante(100, 20); // Se ejecutan todas las líneas... ¡pero no hay ningún expect()!
 });
-
+```
 ---
 
 # Decisiones - TP6
