@@ -19,10 +19,12 @@ ENTRYPOINT ["npm", "run", "test:ci"]
 # ETAPA 2: SERVIDOR (Nginx)
 FROM nginx:alpine
 
-# Copiamos tu archivo nginx.conf (que deberá tener el proxy_pass hacia http://backend:8080/api/)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copiamos tu plantilla de configuración para que Nginx procese variables de entorno al iniciar
+COPY default.conf.template /etc/nginx/templates/default.conf.template
 
 # Copiamos los archivos HTML/JS/CSS generados en la carpeta /dist de la etapa anterior.
 COPY --from=build /app/dist /usr/share/nginx/html
+
+ENV BACKEND_URL=http://backend:8080 DNS_RESOLVER=127.0.0.11
 
 EXPOSE 80
