@@ -163,6 +163,8 @@
 
 .plan-card-footer {
   margin-top: auto;
+  display: flex;
+  gap: 0.5rem;
 }
 
 .btn-solicitar {
@@ -189,4 +191,21 @@
   border: 1px solid #a7f3d0;
   cursor: default;
   font-weight: 700;
+}
+
+.btn-borrar-plan {
+  padding: 0.75rem 1rem;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-borrar-plan:hover {
+  background: #fecaca;
+  transform: translateY(-1px);
 }

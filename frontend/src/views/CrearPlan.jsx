@@ -132,7 +132,7 @@ export default function CrearPlan({ onPlanCreado }) {
         </header>
 
         {error && (
-          <div className="alert-box alert-error">
+          <div className="alert-box alert-error" role="alert">
             <span>⚠️ {error}</span>
           </div>
         )}
