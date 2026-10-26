@@ -160,3 +160,25 @@ export function calcularCapacidadRestante(total, confirmados) {
 it('ejecuta la función de capacidad', () => {
     calcularCapacidadRestante(100, 20); // Se ejecutan todas las líneas... ¡pero no hay ningún expect()!
 });
+
+---
+
+# Decisiones - TP6
+## Despliegue Continuo (CD) y Gestión de Entornos en la Nube
+---
+### 1. Decisiones de Infraestructura y Despliegue
+* **Plataforma de Hosting (Render):** Se optó por utilizar Render mediante Web Services configurados con runtime de Docker y el *Auto-Deploy* desactivado. Esto nos permite un control total sobre cuándo se actualizan los servicios y asegura que el despliegue sea coordinado exclusivamente desde el pipeline de integración continua.
+* **Separación de Entornos (QA vs. Producción):** Se estructuraron cuatro servicios independientes (`api-qa`, `api-prod`, `front-qa`, `front-prod`) para garantizar el aislamiento absoluto entre el entorno de pruebas y el entorno real de producción, evitando interferencias en los datos y comportamientos de la aplicación.
+* **Configuración Dinámica de Nginx en el Frontend:** Se reemplazó el archivo de configuración estático por una plantilla (`default.conf.template`) utilizando variables de entorno (`BACKEND_URL`) y un resolvedor DNS dinámico (`DNS_RESOLVER=8.8.8.8`). Esto evita hardcodear nombres internos de contenedores y permite que el frontend redirija correctamente las peticiones API hacia el backend correspondiente según el entorno.
+---
+### 2. Elección de Base de Datos: Aiven vs. Neon
+* **Decisión:** Se seleccionó **Aiven** como proveedor de base de datos MySQL en la nube en lugar de **Neon**.
+* **Justificación técnica:** 
+  1. *Compatibilidad de motor:* Neon es un servicio exclusivo para bases de datos **PostgreSQL**. El backend del proyecto está desarrollado en Go utilizando el driver oficial de MySQL (`go-sql-driver/mysql`) y consultas SQL nativas de dicho motor. Utilizar Neon habría implicado una reescritura profunda del backend, cambio de driver y validación completa de consultas, introduciendo un riesgo innecesario de rotura en una etapa avanzada del proyecto. Aiven nos proveyó una instancia de MySQL gratuita y compatible al 100% sin tocar el código fuente.
+  2. *Aislamiento de entornos con recursos limitados:* Ante la restricción del plan gratuito de Aiven (límite de un servicio/servidor de base de datos), se resolvió la separación entre QA y Producción utilizando **bases de datos lógicas independientes** dentro del mismo servidor (`defaultdb` para QA y `proddb` para Producción), cumpliendo rigurosamente con el requisito de no mezclar los datos de ambos entornos.
+---
+### 3. Automatización del Despliegue Continuo (CD)
+* **GitHub Actions y GHCR:** Se configuró el pipeline para compilar las imágenes Docker del backend y frontend y publicarlas automáticamente en el GitHub Container Registry (GHCR) etiquetadas con el *commit sha* correspondiente.
+* **Deploy Hooks y Environments:** Se integró GitHub Actions con Render utilizando *Deploy Hooks* seguros almacenados como secretos en los *Environments* de GitHub (`qa` y `production`).
+* **Compuerta Humana (Required Reviewers):** Se configuró el entorno de `production` en GitHub exigiendo una aprobación manual obligatoria antes de que el pipeline ejecute el despliegue hacia producción, implementando formalmente una estrategia de *Continuous Delivery*.
+* **Congelamiento de Versión:** Se cerró el práctico generando y publicando el tag y la release `v6.0.0` en GitHub, garantizando la trazabilidad exacta del estado de la aplicación.
