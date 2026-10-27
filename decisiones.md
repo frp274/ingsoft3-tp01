@@ -196,3 +196,12 @@ Se implementó un pipeline en GitHub Actions con separación de entornos (QA y P
 ## TP8 - Infraestructura como Código
 
 Se implementó un entorno de `preprod` utilizando Terraform con los providers de Aiven (MySQL) y Render. Se configuró una base de datos lógica aislada en la instancia existente de Aiven para optimizar recursos, y se asoció al Render Owner ID del equipo. Uso de IA: Asistencia en la creación del código HCL, debugging de IDs de la API de Render y resolución de exportación de variables en Windows.
+
+
+---
+
+## TP9 - DevSecOps y Observabilidad
+- **Dependabot:** Se mergeó el PR #54 que actualizaba `@vitejs/plugin-react` de la versión 6.1.1 a la 6.1.2. Se decidió avanzar con este PR porque es un salto de versión tipo patch (seguro, sin breaking changes) y todo el pipeline de integración continua finalizó en verde.
+- **UptimeRobot:** El monitor externo detectó la caída de producción y alertó por correo electrónico en menos de 30 segundos.
+- **Sentry:** Según las métricas capturadas, la operación más demandada en el frontend fue `GET front-prod-9tvm.onrender.com`, siendo también la más lenta con un tiempo de latencia P95 de 782.03ms.
+- **Uso de IA:** Se utilizó IA (Gemini) como asistente para generar la configuración de Terraform (TP8), resolver errores de autenticación con el Owner ID en la API de Render, y configurar la instrumentación de Sentry (TP9).
