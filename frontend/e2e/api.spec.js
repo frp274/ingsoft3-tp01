@@ -34,17 +34,18 @@ test.describe('Pruebas de Integración de API - PlanesApp', () => {
     const planEncontrado = planes.find((p) => p.nombre === tituloUnico);
     expect(planEncontrado).toBeDefined();
 
-    // 3. Hacer DELETE para borrarlo
-    const deleteRes = await request.delete(`${API}/api/planes/${planId}`);
-    expect([200, 204, 404, 405]).toContain(deleteRes.status());
+    // Extraemos el ID real directo de la base de datos
+    const idReal = planEncontrado.id || planEncontrado.ID;
 
-    // 4. Hacer otro GET para verificar que ya no está (si fue borrado)
+    // 3. Hacer DELETE estricto para borrarlo
+    const deleteRes = await request.delete(`${API}/api/planes/${idReal}`);
+    expect(deleteRes.ok()).toBeTruthy();
+
+    // 4. Hacer otro GET para verificar que ya no está
     const getFinalRes = await request.get(`${API}/api/planes`);
     expect(getFinalRes.ok()).toBeTruthy();
     const planesFinales = await getFinalRes.json();
-    if (deleteRes.status() === 200 || deleteRes.status() === 204) {
-      expect(planesFinales.some((p) => p.nombre === tituloUnico)).toBeFalsy();
-    }
+    expect(planesFinales.some((p) => p.nombre === tituloUnico)).toBeFalsy();
   });
 
   // Prueba B: Mandar un plan inválido (ej. título vacío), esperar que la API devuelva HTTP 400,
