@@ -182,3 +182,10 @@ it('ejecuta la función de capacidad', () => {
 * **Deploy Hooks y Environments:** Se integró GitHub Actions con Render utilizando *Deploy Hooks* seguros almacenados como secretos en los *Environments* de GitHub (`qa` y `production`).
 * **Compuerta Humana (Required Reviewers):** Se configuró el entorno de `production` en GitHub exigiendo una aprobación manual obligatoria antes de que el pipeline ejecute el despliegue hacia producción, implementando formalmente una estrategia de *Continuous Delivery*.
 * **Congelamiento de Versión:** Se cerró el práctico generando y publicando el tag y la release `v6.0.0` en GitHub, garantizando la trazabilidad exacta del estado de la aplicación.
+
+
+---
+
+## TP7 - CI/CD y Pruebas Automáticas
+
+Se implementó un pipeline en GitHub Actions con separación de entornos (QA y PROD) usando Render y contenedores inmutables desde GHCR. Se agregó un gate de pruebas de integración y E2E con Playwright. Se modificó la aserción de borrado en pruebas de integración para lidiar con el soft-delete del backend en Go, y se extrajo el ID dinámicamente de la base de datos. Uso de IA: Asistencia para armar jobs de CI/CD, configuración de Playwright y resolución de conflictos de Git.
