@@ -189,3 +189,10 @@ it('ejecuta la función de capacidad', () => {
 ## TP7 - CI/CD y Pruebas Automáticas
 
 Se implementó un pipeline en GitHub Actions con separación de entornos (QA y PROD) usando Render y contenedores inmutables desde GHCR. Se agregó un gate de pruebas de integración y E2E con Playwright. Se modificó la aserción de borrado en pruebas de integración para lidiar con el soft-delete del backend en Go, y se extrajo el ID dinámicamente de la base de datos. Uso de IA: Asistencia para armar jobs de CI/CD, configuración de Playwright y resolución de conflictos de Git.
+
+
+---
+
+## TP8 - Infraestructura como Código
+
+Se implementó un entorno de `preprod` utilizando Terraform con los providers de Aiven (MySQL) y Render. Se configuró una base de datos lógica aislada en la instancia existente de Aiven para optimizar recursos, y se asoció al Render Owner ID del equipo. Uso de IA: Asistencia en la creación del código HCL, debugging de IDs de la API de Render y resolución de exportación de variables en Windows.
