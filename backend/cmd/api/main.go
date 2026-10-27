@@ -6,7 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/frp274/ingsoft3-tp01/backend/internal/handlers"
 	"github.com/frp274/ingsoft3-tp01/backend/internal/repository"
 	"github.com/frp274/ingsoft3-tp01/backend/internal/services"
@@ -19,6 +21,20 @@ type HealthResponse struct {
 }
 
 func main() {
+	sentryDsn := os.Getenv("SENTRY_DSN")
+	if sentryDsn != "" {
+		err := sentry.Init(sentry.ClientOptions{
+			Dsn:              sentryDsn,
+			TracesSampleRate: 1.0,
+		})
+		if err != nil {
+			log.Printf("Sentry initialization failed: %v", err)
+		} else {
+			defer sentry.Flush(2 * time.Second)
+			log.Println("Sentry inicializado correctamente en backend")
+		}
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -87,6 +103,14 @@ func main() {
 			return
 		}
 		json.NewEncoder(w).Encode(usuarios)
+	})
+
+	// Endpoint de prueba de falla para observabilidad TP9
+	mux.HandleFunc("/api/falla", func(w http.ResponseWriter, r *http.Request) {
+		err := fmt.Errorf("Falla de prueba del TP9")
+		sentry.CaptureException(err)
+		sentry.Flush(2 * time.Second)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	})
 
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
