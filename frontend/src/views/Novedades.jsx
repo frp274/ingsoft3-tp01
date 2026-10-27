@@ -82,6 +82,14 @@ export default function Novedades() {
     }
   };
 
+  const handleBorrarPlan = async (planId) => {
+    try {
+      await fetch(`/api/planes/${planId}`, { method: 'DELETE' }).catch(() => {});
+    } finally {
+      setPlanes((prev) => prev.filter((p) => p.id !== planId));
+    }
+  };
+
   const formatearFecha = (fechaStr) => {
     if (!fechaStr) return '';
     const fecha = new Date(fechaStr);
@@ -192,6 +200,13 @@ export default function Novedades() {
                       : estaSolicitado
                       ? '✓ Solicitado'
                       : 'Solicitar Invitación'}
+                  </button>
+                  <button
+                    className="btn-borrar-plan"
+                    onClick={() => handleBorrarPlan(plan.id)}
+                    title="Borrar plan"
+                  >
+                    🗑️ Borrar
                   </button>
                 </div>
               </article>
