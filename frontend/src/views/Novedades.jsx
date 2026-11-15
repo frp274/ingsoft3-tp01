@@ -84,9 +84,14 @@ export default function Novedades() {
 
   const handleBorrarPlan = async (planId) => {
     try {
-      await fetch(`/api/planes/${planId}`, { method: 'DELETE' }).catch(() => {});
-    } finally {
+      const res = await fetch(`/api/planes/${planId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Error ${res.status}: no se pudo borrar el plan`);
+      }
       setPlanes((prev) => prev.filter((p) => p.id !== planId));
+    } catch (err) {
+      alert(`⚠️ ${err.message}`);
     }
   };
 

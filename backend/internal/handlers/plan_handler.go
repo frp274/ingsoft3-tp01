@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -162,6 +164,64 @@ func (h *PlanHandler) CrearPlan(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(nuevoPlan)
+}
+
+// HandlePlanByID enruta GET /api/planes/{id} y DELETE /api/planes/{id}.
+func (h *PlanHandler) HandlePlanByID(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/api/planes/")
+	if idStr == "" || strings.Contains(idStr, "/") {
+		h.sendError(w, http.StatusBadRequest, "ID de plan inválido")
+		return
+	}
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		h.sendError(w, http.StatusBadRequest, "ID de plan inválido")
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		h.GetPlanByID(w, r, id)
+	case http.MethodDelete:
+		h.DeletePlan(w, r, id)
+	default:
+		h.sendError(w, http.StatusMethodNotAllowed, "Método no permitido")
+	}
+}
+
+// GetPlanByID maneja el endpoint GET /api/planes/{id}.
+func (h *PlanHandler) GetPlanByID(w http.ResponseWriter, r *http.Request, id int) {
+	plan, err := h.planService.GetPlanByID(r.Context(), id)
+	if err != nil {
+		h.sendError(w, http.StatusInternalServerError, "Error al consultar el plan: "+err.Error())
+		return
+	}
+	if plan == nil {
+		h.sendError(w, http.StatusNotFound, "Plan no encontrado")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(plan)
+}
+
+// DeletePlan maneja el endpoint DELETE /api/planes/{id}.
+func (h *PlanHandler) DeletePlan(w http.ResponseWriter, r *http.Request, id int) {
+	err := h.planService.DeletePlan(r.Context(), id)
+	if errors.Is(err, services.ErrPlanNotFound) {
+		h.sendError(w, http.StatusNotFound, "Plan no encontrado")
+		return
+	}
+	if err != nil {
+		h.sendError(w, http.StatusInternalServerError, "Error al eliminar el plan: "+err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Plan eliminado correctamente"})
 }
 
 func (h *PlanHandler) sendError(w http.ResponseWriter, code int, message string) {

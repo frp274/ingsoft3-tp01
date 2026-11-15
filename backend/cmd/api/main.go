@@ -78,6 +78,8 @@ func main() {
 
 	// Endpoint Planes (GET /api/planes, POST /api/planes)
 	mux.HandleFunc("/api/planes", planHandler.HandlePlanes)
+	// Endpoint Plan por ID (GET /api/planes/{id}, DELETE /api/planes/{id})
+	mux.HandleFunc("/api/planes/", planHandler.HandlePlanByID)
 
 	// Endpoint Invitaciones y Mis Planes (US-5)
 	mux.HandleFunc("/api/invitaciones", invitacionHandler.HandleInvitaciones)
