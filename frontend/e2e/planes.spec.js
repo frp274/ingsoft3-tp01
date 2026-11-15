@@ -25,21 +25,45 @@ test.describe('Pruebas E2E de Interfaz - Gestión de Planes', () => {
     // Elegir la primera opción del desplegable de categorías
     await page.locator('select').first().selectOption({ index: 1 });
 
-    // 3. Hacer clic en el botón de agregar / publicar
+    // 3. Hacer clic en el botón de agregar / publicar y capturar el ID creado para limpieza segura
     const btnPublicar = page.getByRole('button', { name: /Publicar Plan|Agregar/i });
     await expect(btnPublicar).toBeEnabled();
+    const createResponsePromise = page.waitForResponse(
+      (res) => res.url().includes('/api/planes') && res.request().method() === 'POST'
+    );
     await btnPublicar.click();
+    const createRes = await createResponsePromise;
+    expect(createRes.status()).toBe(201);
+    const createdPlan = await createRes.json();
+    const createdId = createdPlan.id || createdPlan.ID;
 
-    // 4. Verificar que el texto del plan aparece visible en la lista (feed de novedades)
-    await expect(page.getByText(tituloUnico).first()).toBeVisible({ timeout: 10000 });
+    let deletedViaUI = false;
+    try {
+      // 4. Verificar que el texto del plan aparece visible en la lista (feed de novedades)
+      await expect(page.getByText(tituloUnico).first()).toBeVisible({ timeout: 10000 });
 
-    // 5. Hacer clic en el botón de borrar de ese plan específico si está presente
-    const planCard = page.locator('.plan-card').filter({ hasText: tituloUnico });
-    const btnBorrar = planCard.getByRole('button', { name: /Borrar|Eliminar/i });
-    if (await btnBorrar.isVisible()) {
+      // 5. Hacer clic en el botón de borrar de ese plan específico y esperar respuesta DELETE 200
+      const planCard = page.locator('.plan-card').filter({ hasText: tituloUnico });
+      const btnBorrar = planCard.getByRole('button', { name: /Borrar|Eliminar/i });
+      await expect(btnBorrar).toBeVisible();
+
+      const deleteResponsePromise = page.waitForResponse(
+        (res) => res.url().includes(`/api/planes/${createdId}`) && res.request().method() === 'DELETE'
+      );
       await btnBorrar.click();
-      // 6. Verificar que desaparece de la vista
-      await expect(page.getByText(tituloUnico)).not.toBeVisible();
+      const deleteRes = await deleteResponsePromise;
+      expect(deleteRes.status()).toBe(200);
+      deletedViaUI = true;
+
+      // 6. Verificar que desaparece de la vista y se mantiene eliminado tras recargar la página
+      await expect(page.locator('.plan-card').filter({ hasText: tituloUnico })).toHaveCount(0);
+      await page.reload();
+      await expect(page.locator('.status-message.loading')).not.toBeVisible();
+      await expect(page.locator('.plan-card').filter({ hasText: tituloUnico })).toHaveCount(0);
+    } finally {
+      if (!deletedViaUI && createdId) {
+        await page.request.delete(`/api/planes/${createdId}`).catch(() => {});
+      }
     }
   });
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/frp274/ingsoft3-tp01/backend/internal/handlers"
 	"github.com/frp274/ingsoft3-tp01/backend/internal/models"
+	"github.com/frp274/ingsoft3-tp01/backend/internal/services"
 )
 
 // MockPlanService implementa services.PlanService usando testify/mock.
@@ -38,6 +39,11 @@ func (m *MockPlanService) GetPlanByID(ctx context.Context, id int) (*models.Plan
 
 func (m *MockPlanService) CrearPlan(ctx context.Context, plan *models.Plan) error {
 	args := m.Called(ctx, plan)
+	return args.Error(0)
+}
+
+func (m *MockPlanService) DeletePlan(ctx context.Context, id int) error {
+	args := m.Called(ctx, id)
 	return args.Error(0)
 }
 
@@ -324,4 +330,113 @@ func TestPlanHandler_MetodoNoPermitido_CasoBorde(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
 	assert.Contains(t, rec.Body.String(), "Método no permitido")
+}
+
+// TestPlanHandler_GetPlanByID_Exitoso verifica 200 OK cuando el plan existe.
+func TestPlanHandler_GetPlanByID_Exitoso(t *testing.T) {
+	mockService := new(MockPlanService)
+	handler := handlers.NewPlanHandler(mockService)
+
+	plan := &models.Plan{ID: 7, Nombre: "Cine al aire libre"}
+	mockService.On("GetPlanByID", mock.Anything, 7).Return(plan, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/planes/7", nil)
+	rec := httptest.NewRecorder()
+
+	handler.HandlePlanByID(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Cine al aire libre")
+	mockService.AssertExpectations(t)
+}
+
+// TestPlanHandler_GetPlanByID_NoEncontrado verifica 404 Not Found cuando el plan no existe.
+func TestPlanHandler_GetPlanByID_NoEncontrado(t *testing.T) {
+	mockService := new(MockPlanService)
+	handler := handlers.NewPlanHandler(mockService)
+
+	mockService.On("GetPlanByID", mock.Anything, 99999999).Return(nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/planes/99999999", nil)
+	rec := httptest.NewRecorder()
+
+	handler.HandlePlanByID(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Plan no encontrado")
+	mockService.AssertExpectations(t)
+}
+
+// TestPlanHandler_DeletePlan_Exitoso verifica 200 OK al eliminar un plan existente.
+func TestPlanHandler_DeletePlan_Exitoso(t *testing.T) {
+	mockService := new(MockPlanService)
+	handler := handlers.NewPlanHandler(mockService)
+
+	mockService.On("DeletePlan", mock.Anything, 42).Return(nil)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/planes/42", nil)
+	rec := httptest.NewRecorder()
+
+	handler.HandlePlanByID(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Plan eliminado correctamente")
+	mockService.AssertExpectations(t)
+}
+
+// TestPlanHandler_DeletePlan_NoEncontrado verifica 404 Not Found si el plan no existe.
+func TestPlanHandler_DeletePlan_NoEncontrado(t *testing.T) {
+	mockService := new(MockPlanService)
+	handler := handlers.NewPlanHandler(mockService)
+
+	mockService.On("DeletePlan", mock.Anything, 42).Return(services.ErrPlanNotFound)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/planes/42", nil)
+	rec := httptest.NewRecorder()
+
+	handler.HandlePlanByID(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Plan no encontrado")
+	mockService.AssertExpectations(t)
+}
+
+// TestPlanHandler_DeletePlan_ErrorServicio verifica 500 cuando el servicio falla.
+func TestPlanHandler_DeletePlan_ErrorServicio(t *testing.T) {
+	mockService := new(MockPlanService)
+	handler := handlers.NewPlanHandler(mockService)
+
+	mockService.On("DeletePlan", mock.Anything, 42).Return(errors.New("error db"))
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/planes/42", nil)
+	rec := httptest.NewRecorder()
+
+	handler.HandlePlanByID(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Error al eliminar el plan")
+	mockService.AssertExpectations(t)
+}
+
+// TestPlanHandler_HandlePlanByID_CasosBorde valida IDs inválidos y métodos no permitidos.
+func TestPlanHandler_HandlePlanByID_CasosBorde(t *testing.T) {
+	for _, path := range []string{"/api/planes/", "/api/planes/abc", "/api/planes/0", "/api/planes/-5", "/api/planes/1/extra"} {
+		mockService := new(MockPlanService)
+		handler := handlers.NewPlanHandler(mockService)
+
+		req := httptest.NewRequest(http.MethodDelete, path, nil)
+		rec := httptest.NewRecorder()
+
+		handler.HandlePlanByID(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "ID de plan inválido")
+	}
+
+	mockService := new(MockPlanService)
+	handler := handlers.NewPlanHandler(mockService)
+	req := httptest.NewRequest(http.MethodPut, "/api/planes/1", nil)
+	rec := httptest.NewRecorder()
+	handler.HandlePlanByID(rec, req)
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
 }

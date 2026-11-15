@@ -19,18 +19,36 @@ test.describe('Pruebas de Integración de API - PlanesApp', () => {
     // 1. Crear el plan y verificar código 201
     const createRes = await request.post(`${API}/api/planes`, { data: nuevoPlan });
     expect(createRes.status()).toBe(201);
+    const planCreado = await createRes.json();
+    const idReal = planCreado.id || planCreado.ID;
 
-    // 2. Hacer GET para verificar que aparece
-    const getRes = await request.get(`${API}/api/planes`);
-    expect(getRes.ok()).toBeTruthy();
-    const planes = await getRes.json();
-    const planEncontrado = planes.find((p) => p.nombre === tituloUnico);
-    expect(planEncontrado).toBeDefined();
+    let borrado = false;
+    try {
+      // 2. Hacer GET para verificar que aparece
+      const getRes = await request.get(`${API}/api/planes`);
+      expect(getRes.ok()).toBeTruthy();
+      const planes = await getRes.json();
+      const planEncontrado = planes.find((p) => p.nombre === tituloUnico);
+      expect(planEncontrado).toBeDefined();
 
-    // 3. Hacer DELETE y verificar que el backend responde OK
-    const idReal = planEncontrado.id || planEncontrado.ID;
-    const deleteRes = await request.delete(`${API}/api/planes/${idReal}`);
-    expect(deleteRes.ok()).toBeTruthy();
+      // 3. Hacer DELETE y verificar que el backend responde OK
+      const deleteRes = await request.delete(`${API}/api/planes/${idReal}`);
+      expect(deleteRes.status()).toBe(200);
+      borrado = true;
+
+      // 4. Confirmar persistencia del borrado: GET por ID devuelve 404 y no aparece en el listado
+      const getDeletedRes = await request.get(`${API}/api/planes/${idReal}`);
+      expect(getDeletedRes.status()).toBe(404);
+
+      const getAfterRes = await request.get(`${API}/api/planes`);
+      expect(getAfterRes.ok()).toBeTruthy();
+      const planesDespues = await getAfterRes.json();
+      expect(planesDespues.find((p) => p.nombre === tituloUnico)).toBeUndefined();
+    } finally {
+      if (!borrado && idReal) {
+        await request.delete(`${API}/api/planes/${idReal}`).catch(() => {});
+      }
+    }
   });
 
   // Prueba B: Mandar un plan inválido (ej. título vacío), esperar que la API devuelva HTTP 400,
@@ -82,6 +100,6 @@ test.describe('Pruebas de Integración de API - PlanesApp', () => {
 
     // 2. Buscar un plan con ID inexistente
     const notFoundRes = await request.get(`${API}/api/planes/99999999`);
-    expect([404, 200]).toContain(notFoundRes.status());
+    expect(notFoundRes.status()).toBe(404);
   });
 });

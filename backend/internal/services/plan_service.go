@@ -9,11 +9,15 @@ import (
 	"github.com/frp274/ingsoft3-tp01/backend/internal/repository"
 )
 
+// ErrPlanNotFound indica que el plan solicitado no existe.
+var ErrPlanNotFound = errors.New("plan no encontrado")
+
 // PlanService define la lógica de negocio asociada a los planes.
 type PlanService interface {
 	GetPlanesPublicos(ctx context.Context) ([]models.Plan, error)
 	GetPlanByID(ctx context.Context, id int) (*models.Plan, error)
 	CrearPlan(ctx context.Context, plan *models.Plan) error
+	DeletePlan(ctx context.Context, id int) error
 }
 
 type planService struct {
@@ -82,4 +86,20 @@ func (s *planService) CrearPlan(ctx context.Context, plan *models.Plan) error {
 	}
 
 	return s.planRepo.Create(ctx, plan)
+}
+
+// DeletePlan elimina un plan existente por su ID.
+func (s *planService) DeletePlan(ctx context.Context, id int) error {
+	if id <= 0 {
+		return errors.New("el id del plan debe ser mayor a 0")
+	}
+
+	deleted, err := s.planRepo.Delete(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !deleted {
+		return ErrPlanNotFound
+	}
+	return nil
 }

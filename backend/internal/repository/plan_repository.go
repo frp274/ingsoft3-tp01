@@ -14,6 +14,7 @@ type PlanRepository interface {
 	ListPublicos(ctx context.Context) ([]models.Plan, error)
 	ListByOrganizador(ctx context.Context, idOrganizador int) ([]models.Plan, error)
 	Create(ctx context.Context, p *models.Plan) error
+	Delete(ctx context.Context, id int) (bool, error)
 }
 
 type mysqlPlanRepository struct {
@@ -98,4 +99,18 @@ func (r *mysqlPlanRepository) Create(ctx context.Context, p *models.Plan) error 
 	}
 	p.ID = int(id)
 	return nil
+}
+
+// Delete elimina un plan por su ID e indica si existía algún registro eliminado.
+func (r *mysqlPlanRepository) Delete(ctx context.Context, id int) (bool, error) {
+	query := `DELETE FROM planes WHERE id = ?`
+	res, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return false, fmt.Errorf("error al eliminar plan: %w", err)
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("error al verificar filas eliminadas: %w", err)
+	}
+	return rowsAffected > 0, nil
 }

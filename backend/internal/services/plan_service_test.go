@@ -46,6 +46,11 @@ func (m *MockPlanRepository) Create(ctx context.Context, p *models.Plan) error {
 	return args.Error(0)
 }
 
+func (m *MockPlanRepository) Delete(ctx context.Context, id int) (bool, error) {
+	args := m.Called(ctx, id)
+	return args.Bool(0), args.Error(1)
+}
+
 // TestPlanService_CrearPlan_Exitoso verifica la creación exitosa de un plan válido.
 func TestPlanService_CrearPlan_Exitoso(t *testing.T) {
 	// Arrange
@@ -261,4 +266,44 @@ func TestPlanService_GetPlanesPublicos_Exitoso(t *testing.T) {
 	assert.Equal(t, 2, len(resultado))
 	assert.Equal(t, "Trekking", resultado[0].Nombre)
 	mockRepo.AssertExpectations(t)
+}
+
+// TestPlanService_DeletePlan_Exitoso verifica la eliminación exitosa de un plan existente.
+func TestPlanService_DeletePlan_Exitoso(t *testing.T) {
+	mockRepo := new(MockPlanRepository)
+	service := services.NewPlanService(mockRepo)
+
+	mockRepo.On("Delete", mock.Anything, 10).Return(true, nil)
+
+	err := service.DeletePlan(context.Background(), 10)
+
+	assert.NoError(t, err)
+	mockRepo.AssertExpectations(t)
+}
+
+// TestPlanService_DeletePlan_NoEncontrado verifica que retorne ErrPlanNotFound cuando no existe.
+func TestPlanService_DeletePlan_NoEncontrado(t *testing.T) {
+	mockRepo := new(MockPlanRepository)
+	service := services.NewPlanService(mockRepo)
+
+	mockRepo.On("Delete", mock.Anything, 999).Return(false, nil)
+
+	err := service.DeletePlan(context.Background(), 999)
+
+	assert.ErrorIs(t, err, services.ErrPlanNotFound)
+	mockRepo.AssertExpectations(t)
+}
+
+// TestPlanService_DeletePlan_IDInvalido_CasoBorde prueba la validación de IDs no positivos.
+func TestPlanService_DeletePlan_IDInvalido_CasoBorde(t *testing.T) {
+	for _, id := range []int{0, -1, -50} {
+		mockRepo := new(MockPlanRepository)
+		service := services.NewPlanService(mockRepo)
+
+		err := service.DeletePlan(context.Background(), id)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "el id del plan debe ser mayor a 0")
+		mockRepo.AssertNotCalled(t, "Delete", mock.Anything, mock.Anything)
+	}
 }
